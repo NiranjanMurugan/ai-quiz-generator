@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Quizly — Learn & Quiz</title>
+  <meta name="description" content="Generate flashcards and quizzes from any topic. Study smarter with a beautiful mobile-first experience." />
+  <link rel="stylesheet" href="style.css" />
+  <!-- PDF.js for PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Tesseract.js for image OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+<div class="bg-canvas" aria-hidden="true">
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+</div>
+
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-logo" id="nav-logo" role="button" tabindex="0" aria-label="Go to home">
+    <div class="logo-icon">Q</div>
+    <span class="logo-text">Quizly</span>
+  </div>
+  <div class="navbar-actions">
+    <span class="db-status" id="db-status" title="Storage backend">…</span>
+    <button class="btn btn-ghost" id="nav-history-btn" title="Saved sets">📂 <span>History</span></button>
+    <button class="btn btn-secondary" id="nav-export-btn" title="Export">📤</button>
+  </div>
+</nav>
+
+<div id="app">
+
+  <!-- HOME — Courses screen -->
+  <main id="view-home" class="view mobile-shell active" role="main">
+    <header class="courses-header">
+      <h1>Courses</h1>
+      <div class="courses-header-actions">
+        <button type="button" class="icon-btn" aria-label="Notifications">🔔</button>
+        <button type="button" class="avatar-btn" aria-label="Profile">Q</button>
+      </div>
+    </header>
+
+    <div class="category-scroll" role="group" aria-label="Categories">
+      <button type="button" class="filter-chip-btn" aria-label="Filter">☰</button>
+      <button type="button" class="category-pill active" data-category="all">
+        All <span class="count" id="cat-count-all">12</span>
+      </button>
+      <button type="button" class="category-pill" data-category="popular">
+        Popular <span class="count">10</span>
+      </button>
+      <button type="button" class="category-pill" data-category="science">Science</button>
+      <button type="button" class="category-pill" data-category="tech">Tech</button>
+      <button type="button" class="category-pill" data-category="writing">Writing</button>
+    </div>
+
+    <article class="featured-card" id="daily-quiz-card">
+      <div class="featured-card-visual">
+        <span class="featured-duration" id="featured-duration">5 min</span>
+        <span class="featured-mascot" aria-hidden="true">🦒</span>
+      </div>
+      <div class="featured-card-body">
+        <div class="featured-card-text">
+          <h2>Daily Quiz</h2>
+          <p>Your daily challenge is waiting!</p>
+        </div>
+        <button type="button" class="play-btn" id="daily-quiz-btn" aria-label="Start daily quiz">▶</button>
+      </div>
+    </article>
+
+    <section class="welcome-block" aria-labelledby="welcome-heading">
+      <h2 id="welcome-heading">Create a quiz</h2>
+      <p class="welcome-sub">Enter a topic or paste your notes — we’ll build your study set.</p>
+
+      <div class="input-panel" role="form" aria-label="Generate quiz">
+        <label class="input-label" for="topic-input">Topic or notes</label>
+        <textarea
+          id="topic-input"
+          class="topic-input"
+          placeholder="e.g. Photosynthesis, Python basics, WWII…"
+          aria-label="Enter a topic"
+          rows="3"
+        ></textarea>
+
+        <div class="mode-selector" role="group" aria-label="Output mode">
+          <button type="button" class="mode-btn active" data-mode="both" id="mode-both">Study Set</button>
+          <button type="button" class="mode-btn" data-mode="flashcards" id="mode-flashcards">Cards</button>
+          <button type="button" class="mode-btn" data-mode="quiz" id="mode-quiz">Quiz</button>
+        </div>
+
+        <div class="options-row">
+          <div class="option-group">
+            <label class="input-label" for="count-select">Count</label>
+            <select id="count-select" class="select-input" aria-label="Number of items">
+              <option value="5">5</option>
+              <option value="8">8</option>
+              <option value="10" selected>10</option>
+              <option value="15">15</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <label class="input-label" for="difficulty-select">Difficulty</label>
+            <select id="difficulty-select" class="select-input" aria-label="Difficulty">
+              <option value="balanced" selected>Balanced</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <label class="input-label" for="level-select">Level</label>
+            <select id="level-select" class="select-input" aria-label="Study level">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate" selected>Mid</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="button" class="generate-btn btn-black" id="generate-btn">Generate quiz</button>
+      </div>
+
+      <!-- FILE UPLOAD PANEL -->
+      <div class="upload-section" aria-label="Upload PDF or image">
+        <div class="upload-divider"><span>or import from file</span></div>
+        <div
+          class="upload-dropzone"
+          id="upload-dropzone"
+          role="button"
+          tabindex="0"
+          aria-label="Drop a PDF or image file here, or click to browse"
+        >
+          <div class="upload-icon" aria-hidden="true">📎</div>
+          <div class="upload-text">
+            <span class="upload-title">Drop PDF or image here</span>
+            <span class="upload-sub">PDF, PNG, JPG, WEBP — text will be extracted automatically</span>
+          </div>
+          <button type="button" class="upload-browse-btn" id="upload-browse-btn">Browse file</button>
+          <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp" style="display:none" aria-hidden="true" />
+        </div>
+        <!-- Progress bar shown while processing -->
+        <div class="upload-progress" id="upload-progress" style="display:none" aria-live="polite">
+          <div class="upload-progress-bar">
+            <div class="upload-progress-fill" id="upload-progress-fill"></div>
+          </div>
+          <span class="upload-progress-label" id="upload-progress-label">Processing…</span>
+        </div>
+        <!-- Preview of extracted text -->
+        <div class="upload-preview" id="upload-preview" style="display:none">
+          <div class="upload-preview-header">
+            <span class="upload-preview-title" id="upload-preview-title">📄 Extracted text</span>
+            <button type="button" class="upload-preview-clear" id="upload-preview-clear" aria-label="Clear">✕</button>
+          </div>
+          <div class="upload-preview-text" id="upload-preview-text"></div>
+          <button type="button" class="generate-btn btn-black" id="upload-generate-btn">Generate quiz from file</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="quick-topics" id="quick-topics" aria-label="Quick topics"></div>
+
+    <div class="mascot-row" id="mascot-row" aria-label="Quick pick topics">
+      <button type="button" class="mascot-card" data-topic="Biology" title="Biology">🐝</button>
+      <button type="button" class="mascot-card" data-topic="Python Programming" title="Python">🤖</button>
+      <button type="button" class="mascot-card" data-topic="World History" title="History">📚</button>
+      <button type="button" class="mascot-card" data-topic="Mathematics" title="Math">🔢</button>
+      <button type="button" class="mascot-card" data-topic="Chemistry" title="Chemistry">⚗️</button>
+    </div>
+  </main>
+
+  <!-- Bottom nav (home only via JS) -->
+  <nav class="bottom-nav" id="bottom-nav" aria-label="App navigation">
+    <button type="button" class="bottom-nav-item active" data-nav="home">
+      <span class="nav-icon">🏠</span>
+      <span>Home</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-nav="history" id="bottom-history-btn">
+      <span class="nav-icon">📂</span>
+      <span>Saved</span>
+    </button>
+    <button type="button" class="bottom-nav-item" data-nav="create" id="bottom-create-btn">
+      <span class="nav-icon">✨</span>
+      <span>Create</span>
+    </button>
+  </nav>
+
+  <!-- GENERATING -->
+  <div id="view-generating" class="view flex-center mobile-shell" aria-live="polite">
+    <div class="generating-container">
+      <div class="generating-spinner" aria-hidden="true"></div>
+      <h2 class="generating-title">Building your quiz…</h2>
+      <p class="generating-subtitle">Almost ready — hang tight!</p>
+      <div class="shimmer-cards" aria-hidden="true">
+        <div class="shimmer-card"></div>
+        <div class="shimmer-card"></div>
+        <div class="shimmer-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <section id="view-flashcards" class="view mobile-shell" aria-labelledby="content-title">
+    <div class="content-header">
+      <div>
+        <h1 class="content-title" id="content-title">Flashcards</h1>
+        <div class="content-meta" id="content-meta">Ready to study</div>
+      </div>
+      <div class="content-actions">
+        <button type="button" class="btn btn-ghost" id="flashcards-back-btn">← Home</button>
+        <button type="button" class="btn btn-secondary" id="export-btn">Export</button>
+        <button type="button" class="btn btn-secondary" id="start-quiz-btn">Quiz</button>
+        <button type="button" class="btn btn-primary" id="start-study-btn">Study</button>
+      </div>
+    </div>
+    <div class="filter-bar" role="group" aria-label="Filter">
+      <button type="button" class="filter-chip active" data-filter="all">All</button>
+      <button type="button" class="filter-chip easy" data-filter="easy">Easy</button>
+      <button type="button" class="filter-chip medium" data-filter="medium">Medium</button>
+      <button type="button" class="filter-chip hard" data-filter="hard">Hard</button>
+    </div>
+    <div class="cards-grid" id="cards-grid" role="list"></div>
+  </section>
+
+  <!-- STUDY -->
+  <section id="view-study" class="view flex-center mobile-shell" aria-label="Study mode">
+    <div class="study-header">
+      <div class="study-progress-wrap">
+        <div class="study-progress-label">
+          <span>Card <span id="study-progress-label-current">1</span></span>
+          <span id="study-progress-label-total">10</span>
+        </div>
+        <div class="study-progress-bar" role="progressbar">
+          <div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="study-exit-btn">✕</button>
+    </div>
+    <div class="study-card-container" id="study-card-container"></div>
+    <div class="study-controls" id="study-controls">
+      <div class="study-nav">
+        <button type="button" class="study-nav-btn" id="study-prev-btn">←</button>
+        <button type="button" class="study-flip-btn" id="study-flip-btn">Flip</button>
+        <button type="button" class="study-nav-btn" id="study-hint-btn">💡</button>
+        <button type="button" class="study-nav-btn" id="study-next-btn">→</button>
+      </div>
+      <div class="rating-buttons" id="rating-buttons" style="display:none;">
+        <button type="button" class="rating-btn again" data-rating="again">Again</button>
+        <button type="button" class="rating-btn hard" data-rating="hard">Hard</button>
+        <button type="button" class="rating-btn easy" data-rating="easy">Easy</button>
+      </div>
+      <div class="study-shortcuts" role="note">
+        <span class="kbd">Space</span> flip · <span class="kbd">→</span> easy · <span class="kbd">←</span> again
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIZ — reference layout -->
+  <section id="view-quiz" class="view mobile-shell" aria-label="Quiz">
+    <div class="quiz-shell">
+      <div class="quiz-exit-row">
+        <button type="button" class="btn btn-ghost btn-sm" id="quiz-exit-btn">✕ Exit</button>
+      </div>
+      <div class="quiz-timer-pill" aria-live="polite">
+        Time left: <strong id="quiz-timer">05:00</strong>
+      </div>
+      <h2 class="quiz-screen-title">Choose the correct answer</h2>
+      <div class="quiz-mascot-wrap">
+        <div class="quiz-mascot" id="quiz-mascot" aria-hidden="true">🐝</div>
+      </div>
+      <p class="quiz-progress-mini" id="quiz-q-label">1 / 10</p>
+      <div id="quiz-question-container" aria-live="polite"></div>
+      <div class="quiz-nav-footer">
+        <button type="button" class="next-btn" id="quiz-next-btn" disabled>Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="view-results" class="view mobile-shell" aria-label="Results">
+    <div class="results-container" id="results-container"></div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="view-history" class="view mobile-shell" aria-labelledby="history-heading">
+    <div class="history-container">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+        <div>
+          <h1 class="history-title" id="history-heading">Saved sets</h1>
+          <p class="history-sub">Your generated flashcards and quizzes.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-ghost" id="history-clear-btn">Clear</button>
+          <button type="button" class="btn btn-primary" id="history-new-btn">+ New</button>
+        </div>
+      </div>
+      <div class="history-grid" id="history-grid"></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+
+<div class="modal-overlay" id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="export-modal-title">Export</h2>
+      <button type="button" class="modal-close" id="export-modal-close" aria-label="Close">✕</button>
+    </div>
+    <button type="button" class="modal-option" id="export-json-btn">
+      <div class="modal-opt-icon">📄</div>
+      <div class="modal-opt-text">
+        <strong>Download JSON</strong>
+        <span>Full study set data</span>
+      </div>
+    </button>
+    <button type="button" class="modal-option" id="export-html-btn">
+      <div class="modal-opt-icon">🖨️</div>
+      <div class="modal-opt-text">
+        <strong>Printable HTML</strong>
+        <span>Save or print as PDF</span>
+      </div>
+    </button>
+    <button type="button" class="modal-option" id="export-copy-btn">
+      <div class="modal-opt-icon">📋</div>
+      <div class="modal-opt-text">
+        <strong>Copy JSON</strong>
+        <span>Copy to clipboard</span>
+      </div>
+    </button>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="storage.js"></script>
+<script src="engine.js"></script>
+<script src="renderer.js"></script>
+<script src="app.js"></script>
+<!-- Use: npm install && npm start → http://localhost:8080 -->
+
+</body>
+</html>
